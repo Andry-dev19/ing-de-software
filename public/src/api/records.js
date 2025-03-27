@@ -13,14 +13,21 @@ export const getAllRecords = async () => {
 
 export const newRecord = async (record) => {
     try {
-        fetch(url, {
+        const response = await fetch("http://localhost:3000/records", {
             method: "POST",
             headers: {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(record)
-        })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Error en la solicitud: ${response.statusText}`);
+        }
+
+        return await response.json(); // 📌 Asegurar que devuelve una respuesta JSON
     } catch (error) {
-        console.log(error);
+        console.error("Error en newRecord:", error);
+        return { success: false, message: error.message };
     }
-}
+};

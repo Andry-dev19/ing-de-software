@@ -8,11 +8,13 @@ import NewProduct from "./new-product";
 const Products = () => {
     const [products, setProducts] = useState(null)
     const [change, setChange] = useState(false);
-    useEffect(() => {
-        (async () => {
-            setProducts(await getProducts());
-        })();
-    }, [change]);
+  useEffect(() => {
+    const fetchProducts = async () => {
+        const updatedProducts = await getProducts();
+        setProducts(updatedProducts);
+    };
+    fetchProducts();
+}, [change]);
     return products && (
         products.length > 0 &&
         <Routes>
