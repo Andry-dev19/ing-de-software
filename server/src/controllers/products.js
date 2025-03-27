@@ -96,30 +96,38 @@ export const newProduct = async (req, res) => {
 
 // Actualizar un producto existente
 export const updateProduct = async (req, res) => {
-    const { codigo_producto, nombre, existencia, precio, img } = req.body;
+    const { codigo_producto, existencia } = req.body; // Solo requerimos código y stock
     let connection;
+
+    if (!codigo_producto || existencia === undefined) {
+        return res.status(400).json({ success: false, message: "Código del producto y stock son requeridos" });
+    }
 
     try {
         connection = await connectionSQL();
 
-        await connection.request()
+        // Actualizar solo el stock en la base de datos
+        const result = await connection.request()
             .input('codigo_producto', SQL.VarChar, codigo_producto)
-            .input('nombre', SQL.VarChar, nombre)
             .input('existencia', SQL.Int, existencia)
-            .input('precio', SQL.Decimal(10, 2), precio)
-            .input('img', SQL.VarChar, img)
-            .query(procedures.updateProduct);
+            .query("UPDATE productos SET existencia = @existencia WHERE codigo_producto = @codigo_producto");
 
-        // Obtener inventario actualizado
-        const updatedInventory = await connection.request().query(procedures.getAllProducts);
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ success: false, message: "Producto no encontrado" });
+        }
+
+        // Obtener el nuevo stock actualizado
+        const updatedStock = await connection.request()
+            .input('codigo_producto', SQL.VarChar, codigo_producto)
+            .query("SELECT existencia FROM productos WHERE codigo_producto = @codigo_producto");
 
         res.status(200).json({
-            msg: "Producto actualizado",
-            inventario: updatedInventory.recordset  // 🔄 Enviamos el inventario actualizado
+            success: true,
+            newStock: updatedStock.recordset[0].existencia  // Solo enviamos el nuevo stock
         });
     } catch (error) {
         console.error("Error en updateProduct:", error);
-        res.status(500).json({ msg: "Error al actualizar el producto", error: error.message });
+        res.status(500).json({ success: false, message: "Error al actualizar el stock" });
     } finally {
         if (connection) {
             connection.close();
@@ -152,6 +160,52 @@ export const deleteProduct = async (req, res) => {
     } finally {
         if (connection) {
             connection.close(); // Cerrar la conexión
+        }
+    }
+};
+
+export const addStock = async (req, res) => {
+    const { codigo_producto, cantidad } = req.body;
+    let connection;
+
+    if (!codigo_producto || cantidad === undefined || cantidad <= 0) {
+        return res.status(400).json({ success: false, message: "Código de producto y cantidad válida son requeridos" });
+    }
+
+    try {
+        connection = await connectionSQL();
+
+        // Verificar si el producto existe
+        const productExists = await connection.request()
+            .input('codigo_producto', SQL.VarChar, codigo_producto)
+            .query("SELECT existencia FROM productos WHERE codigo_producto = @codigo_producto");
+
+        if (productExists.recordset.length === 0) {
+            return res.status(404).json({ success: false, message: "Producto no encontrado" });
+        }
+
+        // Llamar al procedimiento almacenado `SP_SumarExistencias`
+        await connection.request()
+            .input('CodProducto', SQL.VarChar, codigo_producto)
+            .input('Cantidad', SQL.Int, cantidad)
+            .execute("SP_SumarExistencias");
+
+        // Obtener el nuevo stock actualizado
+        const updatedStock = await connection.request()
+            .input('codigo_producto', SQL.VarChar, codigo_producto)
+            .query("SELECT existencia FROM productos WHERE codigo_producto = @codigo_producto");
+
+        res.status(200).json({
+            success: true,
+            message: "Stock actualizado correctamente",
+            newStock: updatedStock.recordset[0].existencia
+        });
+    } catch (error) {
+        console.error("Error en addStock:", error);
+        res.status(500).json({ success: false, message: "Error al actualizar el stock" });
+    } finally {
+        if (connection) {
+            connection.close();
         }
     }
 };

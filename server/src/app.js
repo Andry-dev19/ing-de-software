@@ -1,9 +1,12 @@
 import express from "express";
 import config from "./config";
 import Routes from './routes';
+import providerRoutes from './routes/providerRoutes';
+
 const app = express();
-//Settings
-app.set('port', config.port)
+
+// Settings
+app.set('port', config.port);
 
 app.use((req, res, next) => {
     res.setHeader('Access-Control-Allow-Origin', 'http://localhost:5173');
@@ -12,10 +15,11 @@ app.use((req, res, next) => {
     next();
 });
 
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(Routes.Products);
 app.use(Routes.Users);
 app.use(Routes.Records);
-export default app; 
+app.use('/api', providerRoutes);
+
+export default app;

@@ -5,8 +5,7 @@
   "main": "index.js",
   "scripts": {
     "dev": "nodemon src/index.js --exec babel-node",
-    "test-db": "babel-node src/testConnection.js",
-    "start": "npm run dev"
+    "test-db": "babel-node src/testConnection.js"
   },
   "keywords": [],
   "author": "",
